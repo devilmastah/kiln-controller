@@ -1,8 +1,8 @@
 Kiln Controller
 ==========
 
-Forked from jbruce2000. 
-I forked this repository to add a few things i wanted myself, this version contains a casting flask calculator as this is what i use the kiln controller for mainly. 
+Forked from jbruce2000. \
+I forked this repository to add a few things i wanted myself, this version contains a casting flask calculator as this is what i use the kiln controller for mainly. \
 I added a tablet to my kiln and having a touchscreen handy with a flask calculator is easyer then calculating everything by hand. 
 Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller.
 
@@ -21,6 +21,8 @@ Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller.
   * accurate simulation
   * support for shifting schedule when kiln cannot heat quickly enough
   * support for preventing initial integral wind-up
+  * Flask / investment mixing ratio / wax to metal calculator for investment casting (code needs improving but it works)
+
 
 
 **Run Kiln Schedule**
