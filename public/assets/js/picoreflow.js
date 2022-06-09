@@ -51,7 +51,7 @@ function updateProfile(id)
     selected_profile = id;
     selected_profile_name = profiles[id].name;
     var job_seconds = profiles[id].data.length === 0 ? 0 : parseInt(profiles[id].data[profiles[id].data.length-1][0]);
-    var kwh = (3850*job_seconds/3600/1000).toFixed(2);
+    var kwh = (1300*job_seconds/3600/1000).toFixed(2);
     var cost =  (kwh*kwh_rate).toFixed(2);
     var job_time = new Date(job_seconds * 1000).toISOString().substr(11, 8);
     $('#sel_prof').html(profiles[id].name);
@@ -190,7 +190,8 @@ function hazardTemp(){
 
 function timeTickFormatter(val)
 {
-    if (val < 1800)
+
+    if (val < 60)
     {
         return val;
     }
@@ -204,6 +205,19 @@ function timeTickFormatter(val)
         if (minutes < 10) {minutes = "0"+minutes;}
 
         return hours+":"+minutes;
+    }
+}
+
+function investMentCalculator()
+{
+    if($("#calculatorform").css("display") == "block")
+    {
+            $(".appendhere").html("");
+            $("#graph_container").css("display","block");
+            $("#calculatorform").css("display","none");
+    }else{
+            $("#graph_container").css("display","none");
+            $("#calculatorform").css("display","block");
     }
 }
 
@@ -463,7 +477,7 @@ $(document).ready(function()
             {
             ele: 'body', // which element to append to
             type: 'success', // (null, 'info', 'error', 'success')
-            offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+            offset: {from: 'top', amount: 30}, // 'top', or 'bottom'
             align: 'center', // ('left', 'right', or 'center')
             width: 385, // (integer, or 'auto')
             delay: 2500,
@@ -477,7 +491,7 @@ $(document).ready(function()
             $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>ERROR 1:</b><br/>Status Websocket not available", {
             ele: 'body', // which element to append to
             type: 'error', // (null, 'info', 'error', 'success')
-            offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+            offset: {from: 'top', amount: 30}, // 'top', or 'bottom'
             align: 'center', // ('left', 'right', or 'center')
             width: 385, // (integer, or 'auto')
             delay: 5000,
@@ -542,11 +556,14 @@ $(document).ready(function()
                     graph.live.data.push([x.runtime, x.temperature]);
                     graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
 
+                    const d = new Date();
+
                     left = parseInt(x.totaltime-x.runtime);
                     eta = new Date(left * 1000).toISOString().substr(11, 8);
-
+                    finishat = new Date(d.getTime() + new Date(left * 1000).getTime() + 7200000 ).toISOString().substr(11, 8);
+                    console.log(eta);
                     updateProgress(parseFloat(x.runtime)/parseFloat(x.totaltime)*100);
-                    $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 40px;">' + eta + '</span>');
+                    $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 40px;">' + eta + '<span style="font-size:20px;"> finish at: ' + finishat + '</span></span>');
                     $('#target_temp').html(parseInt(x.target));
 
 
@@ -704,3 +721,112 @@ $(document).ready(function()
 
     }
 });
+
+
+$(document).ready(function(){
+    $("#flaskdiam, #flaskheight, #numberflasks, #modeltype, #modelholderweight, #modelweight").change(function(){
+        var flaskdiam = $("#flaskdiam").val();
+        var flaskheight = $("#flaskheight").val();
+        var numberflasks = $("#numberflasks").val();
+
+        var modelweight = $("#modelweight").val();
+        var modelholderweight = $("#modelholderweight").val();
+        var modelgravity = $("#modeltype").find(':selected').data("gravity");
+        var modelmelting = $("#modeltype").find(':selected').data("melting");
+           
+        var nettomodel = modelweight - modelholderweight;
+        var metalamount = nettomodel * modelgravity;
+
+       
+
+
+        const ratios = Array();
+
+        ratios[38] = 1.76;
+        ratios[39] = 1.75;
+        ratios[40] = 1.74;
+        ratios[41] = 1.725;
+        ratios[42] = 1.71;
+       
+
+
+        const type = Array();
+        type[38] = "generic";
+        type[39] = "generic";
+        type[40] = "generic";
+        type[41] = "generic";
+        type[42] = "generic";
+  
+
+        //water is key density with water is value (cubic inch);
+
+
+        if(flaskdiam != "" && flaskheight != "" && numberflasks != "")
+        {
+            $(".appendhere").html("");
+
+            let mlneeded = ((flaskheight * Math.PI * (flaskdiam /2) *  (flaskdiam /2))/1000 ) - nettomodel;
+
+            $("#totalML").val(mlneeded);
+
+
+
+            console.log(mlneeded);
+
+
+
+            console.log(ratios);
+            $(ratios).each(function(water,density){
+
+            
+
+
+
+                if(density != null)
+                {
+
+
+                        var investmentgram = (mlneeded*density)/(1+(water/100));
+                        var watergram = investmentgram * (water/100);
+
+
+                    $(".appendhere").append('<div class="row"><div class="col-md-12 col-sm-12 col-xs-12">' +
+                                            '<div class="panel panel-default">' +
+                                            '<div class="panel-heading clearfix">'+
+          '<i class="icon-calendar"></i>' +
+        '  <h3 class="panel-title">'+water+':100 (Water:Powder)</h3>' +
+       ' </div> ' +
+        
+      '  <div class="panel-body">' +
+       '   <div class="row">' +
+          '  <div class="col-lg-4 col-sm-4">' +
+           '   <div class="input-group">' +
+             '   <span class="input-group-addon">Investment (gram)</span>' +
+             '   <input type="number" value="'+investmentgram+'" id="flaskdiam" class="form-control" placeholder="mm">' +
+             ' </div>' +
+           ' </div>' +
+         '   <div class="col-lg-4 col-sm-4">' +
+           '   <div class="input-group">' +
+               '     <span class="input-group-addon">Water (gram)</span>' +
+               ' <input type="number" id="flaskheight"  value="'+watergram+'" placeholder="mm" class="form-control">' +
+            
+             ' </div>' +
+            '</div>' + '   <div class="col-lg-4 col-sm-4">' +
+           '   <div class="input-group">' +
+               '     <span class="input-group-addon">Castable metal (gram)</span>' +
+               ' <input type="number" id="flaskheight"  value="'+metalamount+'" placeholder="mm" class="form-control">' +
+            
+             ' </div>' +
+            '</div>' +
+         
+      '    </div>' +
+     '   </div>' +
+    '  </div>' +
+   ' </div>' +
+  '</div>' +
+  '<!-- Row end -->')
+                }
+            })
+        }
+    });
+})
