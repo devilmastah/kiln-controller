@@ -110,6 +110,15 @@ class TempSensorReal(TempSensor):
                                      config.gpio_sensor_data,
                                      config.temp_scale)
 
+        if config.max6675:
+            log.info("init MAX6675")
+            import MAX6675
+            self.thermocouple = MAX6675.MAX6675(config.gpio_sensor_clock,
+                                     config.gpio_sensor_cs,
+                                     config.gpio_sensor_data,
+                                     config.temp_scale)
+
+
         if config.max31856:
             log.info("init MAX31856")
             from max31856 import MAX31856
@@ -136,16 +145,18 @@ class TempSensorReal(TempSensor):
                 self.bad_count = 0
                 self.ok_count = 0
                 self.bad_stamp = time.time()
-
-            temp = self.thermocouple.get()
-            self.noConnection = self.thermocouple.noConnection
-            self.shortToGround = self.thermocouple.shortToGround
-            self.shortToVCC = self.thermocouple.shortToVCC
-            self.unknownError = self.thermocouple.unknownError
-
-            is_bad_value = self.noConnection | self.unknownError
-            if config.honour_theromocouple_short_errors:
-                is_bad_value |= self.shortToGround | self.shortToVCC
+            if config.max6675:
+                temp = self.thermocouple.get_temp()
+                is_bad_value = False
+            else:
+                temp = self.thermocouple.get()
+                self.noConnection = self.thermocouple.noConnection
+                self.shortToGround = self.thermocouple.shortToGround
+                self.shortToVCC = self.thermocouple.shortToVCC
+                self.unknownError = self.thermocouple.unknownError
+                is_bad_value = self.noConnection | self.unknownError
+                if config.honour_theromocouple_short_errors:
+                    is_bad_value |= self.shortToGround | self.shortToVCC
 
             if not is_bad_value:
                 temps.append(temp)
