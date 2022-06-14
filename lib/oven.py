@@ -5,6 +5,7 @@ import datetime
 import logging
 import json
 import config
+import mqtt
 
 log = logging.getLogger(__name__)
 
@@ -188,6 +189,10 @@ class Oven(threading.Thread):
     '''parent oven class. this has all the common code
        for either a real or simulated oven'''
     def __init__(self):
+        self.mqttconnection = mqtt.sendMqttdata()
+        if config.useMQTT:
+            self.keepalivecounter = 0
+            self.keepaliveMqtt()
         threading.Thread.__init__(self)
         self.daemon = True
         self.temperature = 0
@@ -258,31 +263,51 @@ class Oven(threading.Thread):
     def update_target_temp(self):
         self.target = self.profile.get_target_temperature(self.runtime)
 
+    # TODO FIX QUITTING OF THIS IN CONSOLE!
+    def keepaliveMqtt(self):
+        threading.Timer(5.0, self.keepaliveMqtt).start()
+        if self.keepalivecounter > 5:
+            self.keepalivecounter = 0
+        else:
+           self. keepalivecounter = self.keepalivecounter + 1
+        
+        self.mqttconnection.updatePublishData("keepalive", self.keepalivecounter)
+        self.mqttconnection.publishData()
+        
     def reset_if_emergency(self):
         '''reset if the temperature is way TOO HOT, or other critical errors detected'''
         if (self.board.temp_sensor.temperature + config.thermocouple_offset >=
             config.emergency_shutoff_temp):
             log.info("emergency!!! temperature too high")
+            self.mqttconnection.updatePublishData("alert","high temperature")
             if not config.ignore_emergencies == True:
                 self.reset()
 
         if self.board.temp_sensor.noConnection:
             log.info("emergency!!! lost connection to thermocouple")
+            self.mqttconnection.updatePublishData("alert","Lost thermocouple connection")
             if not config.ignore_emergencies == True:
                 self.reset()
 
         if self.board.temp_sensor.unknownError:
             log.info("emergency!!! unknown thermocouple error")
+            self.mqttconnection.updatePublishData("alert","Unknown thermocouple error")
             if not config.ignore_emergencies == True:
                 self.reset()
 
         if self.board.temp_sensor.bad_percent > 30:
             log.info("emergency!!! too many errors in a short period")
+            self.mqttconnection.updatePublishData("alert","Too many errors")
             if not config.ignore_emergencies == True:
                 self.reset()
+        self.mqttconnection.publishData()
 
     def reset_if_schedule_ended(self):
+        self.mqttconnection.updatePublishData("timeleftminutes",(self.totaltime - self.runtime) / 60)
+        self.mqttconnection.updatePublishData("timeleftseconds",(self.totaltime - self.runtime))
         if self.runtime > self.totaltime:
+            self.mqttconnection.updatePublishData("kilnstate","FINISHED RUN")
+            self.mqttconnection.publishData()
             log.info("schedule ended, shutting down")
             self.reset()
 
@@ -299,6 +324,12 @@ class Oven(threading.Thread):
             'profile': self.profile.name if self.profile else None,
             'pidstats': self.pid.pidstats,
         }
+        self.mqttconnection.updatePublishData("temperature",self.board.temp_sensor.temperature + config.thermocouple_offset)
+        self.mqttconnection.updatePublishData("kilnstate",self.state)
+        self.mqttconnection.updatePublishData("heaterpower", (50 * self.heat))
+        self.mqttconnection.updatePublishData("targettemperature", self.target)
+        self.mqttconnection.updatePublishData("activeprofile", self.profile.name if self.profile else "UNKNOWN")
+        self.mqttconnection.publishData()
         return state
 
     def run(self):

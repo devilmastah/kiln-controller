@@ -73,7 +73,7 @@ Download [Raspberry PI OS](https://www.raspberrypi.org/software/). Use Rasberry 
     $ source venv/bin/activate
     $ export CFLAGS=-fcommon
     $ pip3 install --upgrade setuptools
-    $ pip3 install greenlet bottle gevent gevent-websocket
+    $ pip3 install greenlet bottle gevent gevent-websocket paho.mqtt
 
 *Note: The above steps work on ubuntu if you prefer*
 
@@ -94,6 +94,48 @@ All parameters are defined in config.py, review/change to your mind's content.
 You should change, test, and verify PID parameters in config.py.  Here is a [PID Tuning Guide](https://github.com/jbruce12000/kiln-controller/blob/master/docs/pid_tuning.md). There is also an [autotuner](https://github.com/jbruce12000/kiln-controller/blob/master/docs/ziegler_tuning.md). Be patient with tuning. No tuning is perfect across a wide temperature range.
 
 You may want to change the configuration parameter **sensor_time_wait**. It's the duty cycle for the entire system.  It's set to two seconds by default which means that a decision is made every 2s about whether to turn on relay[s] and for how long. If you use mechanical relays, you may want to increase this. At 2s, my SSR switches 11,000 times in 13 hours.
+
+
+
+## MQTT configuration Home Assistant
+
+in the config.py there is a configuration section for your MQTT broker. I personnaly use Mosquito.
+Insert the server, username and password.
+
+give your kiln a name, no spaces or special characters.
+
+For the configuration on the Home assistant side you will need this, remplace ```<kilnname>``` with the same name you gave it in the config.py (there are two!)
+
+```
+mqtt:
+  sensor:
+    - name: "Minikiln"
+      state_topic: "shed/<kilnname>"
+      value_template: "{{ value_json.temperature }}"
+      json_attributes_topic: "shed/<kilnname>"
+      json_attributes_template: >
+        { "devicename" : "{{ value_json.devicename }}",
+          "heaterpower" : {{ value_json.heaterpower }},
+          "targettemperature" : {{value_json.targettemperature }},
+          "timeleftminutes" : {{value_json.timeleftminutes }},
+          "timeleftseconds" : {{value_json.timeleftseconds}},
+          "kilnstate" : "{{ value_json.kilnstate }}",
+          "activeprofile" : "{{ value_json.activeprofile }}",
+          "alert" : "{{ value_json.alert }}",
+          "keepalive" : {{value_json.keepalive }} }
+```
+```
+As for what al these do:
+    devicename  = the name of the device...
+    heaterpower = 0 - 100 % power of heating is applied
+    targettemperature = the current target in the running profile
+    timeleftminutes = time left in the profile in minutes
+    timeleftseconds = time left in the profile in seconds
+    kilnstate = the current state ( IDLE, FINISHED RUN, RUNNING)
+    activeprofile = the name of the current profile
+    alert = a text alert of the last fault
+    keepalive = this value will change every 5 seconds. (counts from 0 till 6 and resets to 0), you could make an hassio automation checking if the value did not change for x seconds and assume that the kiln controller crashed!
+```
 
 ## Usage
 
